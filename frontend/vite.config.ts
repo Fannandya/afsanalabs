@@ -11,5 +11,14 @@ export default defineConfig({
 			},
 			adapter: adapter({ fallback: 'index.html' })
 		})
-	]
+	],
+	server: {
+		// Dev lokal: teruskan API/storage/auth ke backend :8000 agar base
+		// relatif (/api/v1) tetap jalan tanpa .env. Produksi via nginx.
+		proxy: {
+			'/api': { target: 'http://localhost:8000', changeOrigin: true },
+			'/sanctum': { target: 'http://localhost:8000', changeOrigin: true },
+			'/storage': { target: 'http://localhost:8000', changeOrigin: true }
+		}
+	}
 });
