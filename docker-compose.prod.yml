@@ -1,0 +1,93 @@
+# Produksi — dipakai Dokploy (isi Compose File: docker-compose.prod.yml)
+# dan lokal via Makefile (`--env-file .env.docker`).
+# Semua secret diisi dari environment; TIDAK ada nilai rahasia di file ini.
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?isi MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE:-jasa_website}
+      MYSQL_USER: ${DB_USERNAME:?isi DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_NAME: ${APP_NAME:-Afsana}
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      APP_URL: ${APP_URL:?isi APP_URL, cth. https://domain-anda}
+      APP_KEY: ${APP_KEY:?isi APP_KEY dari `make key`}
+      FRONTEND_URL: ${FRONTEND_URL:?isi FRONTEND_URL}
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_STATEFUL_DOMAINS:?isi SANCTUM_STATEFUL_DOMAINS}
+      SESSION_DRIVER: database
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
+      SESSION_SECURE_COOKIE: 'true'
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-jasa_website}
+      DB_USERNAME: ${DB_USERNAME:?isi DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@lima.ai}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?isi SEED_ADMIN_PASSWORD}
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-2525}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+    volumes:
+      - uploads-data:/var/www/html/storage/app/public
+    healthcheck:
+      test: ['CMD-SHELL', "php artisan tinker --execute='DB::connection()->getPdo();' > /dev/null 2>&1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-}
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - uploads-data:/srv/storage:ro
+    # Port TIDAK dipublish di sini: di Dokploy expose via Domains/Traefik di UI.
+    # Untuk debug lokal tanpa tunnel: `make preview` (buka 127.0.0.1:8080 sementara).
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - web
+    profiles:
+      - tunnel
+
+volumes:
+  mysql-data:
+    name: afsana_mysql-data
+  uploads-data:
+    name: afsana_uploads-data

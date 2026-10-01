@@ -1,0 +1,6 @@
+# Override khusus `make preview`: buka nginx sementara di 127.0.0.1:8080
+# untuk debug tanpa tunnel/Dokploy. JANGAN dipakai produksi.
+services:
+  web:
+    ports:
+      - '127.0.0.1:8080:80'

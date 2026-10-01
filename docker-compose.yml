@@ -1,0 +1,22 @@
+# Dev lokal (Mac): hanya MySQL. Laravel via `php artisan serve`,
+# SvelteKit via `npm run dev` — jalan native arm64 tanpa emulasi.
+services:
+  mysql:
+    image: mysql:8.4
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: jasa_website
+      MYSQL_USER: jasa
+      MYSQL_PASSWORD: jasa
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-proot']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql-data:
