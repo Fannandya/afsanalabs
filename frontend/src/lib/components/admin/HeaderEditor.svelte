@@ -27,7 +27,6 @@
 		errors = {};
 		try {
 			const updated = await api.patch<Record<string, unknown>>(`/admin/section-headers/${sectionKey}`, {
-				eyebrow_text: form['eyebrow_text'] ?? null,
 				heading: form['heading'],
 				subtitle: form['subtitle'] ?? null,
 				intro_text: form['intro_text'] ?? null,

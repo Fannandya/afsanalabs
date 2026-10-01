@@ -29,7 +29,6 @@ export const SECTIONS: Record<string, SectionConfig> = {
 		title: 'Hero',
 		endpoint: '/admin/hero',
 		fields: [
-			{ key: 'eyebrow', label: 'Eyebrow', type: 'text' },
 			{ key: 'heading', label: 'Heading', type: 'text', required: true },
 			{ key: 'subheading', label: 'Subheading', type: 'textarea' },
 			{ key: 'cta_label', label: 'Label CTA', type: 'text' },
@@ -57,7 +56,6 @@ export const SECTIONS: Record<string, SectionConfig> = {
 		endpoint: '/admin/process-steps',
 		fields: [
 			{ key: 'step_number', label: 'Nomor langkah', type: 'number', required: true },
-			{ key: 'icon', label: 'Ikon', type: 'text' },
 			{ key: 'title', label: 'Judul', type: 'text', required: true },
 			{ key: 'description', label: 'Deskripsi', type: 'textarea', required: true },
 			...sortActive
@@ -72,7 +70,6 @@ export const SECTIONS: Record<string, SectionConfig> = {
 		fields: [
 			{ key: 'name', label: 'Nama', type: 'text', required: true },
 			{ key: 'description', label: 'Deskripsi', type: 'textarea', required: true },
-			{ key: 'icon', label: 'Ikon', type: 'text' },
 			...sortActive
 		],
 		columns: ['name', 'sort_order', 'is_active']
@@ -124,7 +121,6 @@ export const SECTIONS: Record<string, SectionConfig> = {
 		title: 'Mockup Offer',
 		endpoint: '/admin/mockup-offer',
 		fields: [
-			{ key: 'eyebrow', label: 'Eyebrow', type: 'text' },
 			{ key: 'heading', label: 'Heading', type: 'text', required: true },
 			{ key: 'description', label: 'Deskripsi', type: 'textarea', required: true },
 			{ key: 'feature_bullets', label: 'Fitur', type: 'json' },
@@ -147,7 +143,6 @@ export const SECTIONS: Record<string, SectionConfig> = {
 };
 
 export const HEADER_FIELDS: FieldDef[] = [
-	{ key: 'eyebrow_text', label: 'Eyebrow', type: 'text' },
 	{ key: 'heading', label: 'Heading', type: 'text', required: true },
 	{ key: 'subtitle', label: 'Subtitle', type: 'text' },
 	{ key: 'intro_text', label: 'Intro', type: 'textarea' },

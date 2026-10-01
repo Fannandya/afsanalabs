@@ -45,7 +45,7 @@
 	<h2 style="margin-top:36px">Testimoni</h2>
 	<div class="grid c3">
 		{#each testimonials as t (t.id)}
-			<div class="card"><p>“{String(t['content'])}”</p><p class="small muted">— {String(t['client_name'])} · ★{String(t['rating'])}</p></div>
+			<div class="card"><p>“{String(t['content'])}”</p><p class="small muted">— {String(t['client_name'])} · {String(t['rating'])}/5</p></div>
 		{/each}
 	</div>
 	<p><button class="btn ghost" onclick={() => goto('/')}>← Beranda</button></p>
