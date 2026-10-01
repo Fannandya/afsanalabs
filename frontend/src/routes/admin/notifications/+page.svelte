@@ -33,6 +33,7 @@
 <label class="f" style="display:flex;flex-direction:row;align-items:center;gap:8px;max-width:280px">
 	<input type="checkbox" style="width:auto" bind:checked={onlyUnread} onchange={load} /> Hanya belum dibaca
 </label>
+<div style="overflow-x:auto">
 <table class="tbl" style="margin-top:12px">
 	<thead><tr><th>Tipe</th><th>Pesan</th><th>Status</th><th>Aksi</th></tr></thead>
 	<tbody>
@@ -46,3 +47,4 @@
 		{/each}
 	</tbody>
 </table>
+</div>

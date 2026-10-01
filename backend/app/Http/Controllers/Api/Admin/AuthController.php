@@ -34,9 +34,10 @@ class AuthController extends Controller
 
     public function forgot(ForgotPasswordRequest $request)
     {
-        $status = Password::sendResetLink($request->only('email'));
+        Password::sendResetLink($request->only('email'));
 
-        return response()->json(['data' => ['ok' => true, 'status' => $status]]);
+        // Selalu balas sama agar tidak membocorkan email terdaftar atau tidak.
+        return response()->json(['data' => ['ok' => true]]);
     }
 
     public function reset(ResetPasswordRequest $request)

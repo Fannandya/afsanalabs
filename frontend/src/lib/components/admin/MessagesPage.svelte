@@ -38,6 +38,7 @@
 </script>
 
 <h1>{title}</h1>
+<div style="overflow-x:auto">
 <table class="tbl">
 	<thead><tr><th>Nama</th><th>Email</th><th>Pesan</th><th>Status</th><th>Ubah</th></tr></thead>
 	<tbody>
@@ -58,6 +59,7 @@
 		{/each}
 	</tbody>
 </table>
+</div>
 <div class="toolbar">
 	<button class="btn ghost small" disabled={pageNo <= 1} onclick={() => load(pageNo - 1)}>← Prev</button>
 	<span class="small muted">Hal {pageNo}</span>
