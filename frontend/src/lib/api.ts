@@ -70,8 +70,17 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 		}
 		throw errorFrom(res.status, body);
 	}
-	const data = (body as { data?: T })?.data;
-	return (data !== undefined ? data : body) as T;
+	// Unwrap envelope {data} — KECUALI respons paginasi {data,page,limit}
+	// yang dibutuhkan utuh oleh halaman admin orders/messages.
+	if (
+		typeof body === 'object' &&
+		body !== null &&
+		'data' in body &&
+		!('page' in (body as Record<string, unknown>))
+	) {
+		return (body as { data: T }).data as T;
+	}
+	return body as T;
 }
 
 export const api = {

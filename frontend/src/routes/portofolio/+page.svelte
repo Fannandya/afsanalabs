@@ -34,7 +34,7 @@
 	<div class="grid c3">
 		{#each items as p (p.id)}
 			<div class="card">
-				{#if p['image_url']}<img class="cover" src={publicAsset(String(p['image_url']))} alt={String(p['title'])} />{/if}
+				{#if p['image_url']}<img loading="lazy" class="cover" src={publicAsset(String(p['image_url']))} alt={String(p['title'])} />{/if}
 				<h3>{String(p['title'])}</h3>
 				<p class="muted small">{String(p['description'] ?? '')}</p>
 			</div>
