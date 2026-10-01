@@ -84,3 +84,10 @@ Catatan: `.env.docker.example` di repo masih memuat var era Express (`BETTER_AUT
 - [ ] Migrasi + seed sukses (`make migrate && make seed`).
 - [ ] `TUNNEL_TOKEN` valid bila pakai `tunnel-up`; kalau tidak, port nginx hanya dibuka seperlunya.
 - [ ] Backup awal jalan (`make backup` → folder `backups/`), lalu jadwalkan berkala.
+
+## 6.8 Deploy via Dokploy (home server)
+1. Di Dokploy buat Application → tipe **Docker Compose** → arahkan ke repo ini, Compose File: `docker-compose.prod.yml`.
+2. Isi **Environment** di UI Dokploy dengan nilai dari `.env.docker.example` (`APP_URL`/`FRONTEND_URL` = `https://domain-anda`, `SANCTUM_STATEFUL_DOMAINS` = `domain-anda`, `APP_KEY` dari `make key`, sandi diganti). `VITE_API_BASE` biarkan kosong (frontend + API satu domain via nginx).
+3. Tambahkan **Domain** di Dokploy ke service `web` port `80`. Tanpa publish port di compose (Dokploy/Traefik yang expose).
+4. Setelah deploy pertama, di terminal Dokploy jalankan sekali: `make migrate && make seed` (atau `docker compose exec app php artisan migrate --force && docker compose exec app php artisan db:seed --force` bila tanpa Makefile).
+5. `APP_DEBUG` dipaksa `false` di compose; `.env` tidak pernah dibakar ke image (lihat `.dockerignore`).

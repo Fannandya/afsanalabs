@@ -51,7 +51,7 @@
 | G3 | Kartu paket tampilkan angka harga atau tidak (`show_price`) | `DESIGN.md §6` | ⏳ Keputusan bisnis (skema sudah siap dua-duanya) |
 | G4 | Jawaban 4 FAQ belum ditulis (desain hanya ada pertanyaan) | `DESIGN.md §6`, `CMS.md §2.10` | ⏳ TODO konten sebelum go-live |
 | G5 | `reference_price_cards` bisa basi (harga pihak ketiga) | `CMS.md §2.5` | ⚠️ Proses: admin update berkala + `note_text` wajib menyebut tanggal cek |
-| G6 | `.env.docker.example`, `Dockerfile`, `Makefile`, `AGENTS.md`, `ARCHITECTURE.md` masih era Express/SolidJS | Audit `docs/` | ⏳ Diselaraskan di [08](08-migrasi.md) Fase 0 |
+| G6 | `.env.docker.example`, `Dockerfile`, `Makefile`, `AGENTS.md`, `ARCHITECTURE.md` masih era Express/SolidJS | Audit `docs/` | ✅ Selesai: `Dockerfile` multi-stage (`app`/`web`), `docker-compose.yml` (dev mysql), `docker-compose.prod.yml` (+`cloudflared` profil tunnel), `docker-compose.preview.yml`, `.env.docker.example` kanonis, `Makefile` Laravel (lihat §6.8 untuk Dokploy) |
 | G7 | `ARCHITECTURE.md` menyebut `OrderConfirmation`/`/pesan/konfirmasi` yang tidak ada di kode | Audit `docs/` | ✅ Diputus: ikut kode (hanya `/pesan`) sampai ada spec baru |
 
 ## Testing minimum (wajib hijau sebelum klaim selesai)
