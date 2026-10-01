@@ -1,93 +1,113 @@
-# 06 — Deployment Docker Multi-Arch (Mac ARM64 → Ubuntu AMD64)
+# 06 — Deployment Shared Hosting (cPanel), Satu Domain
 
-> Bagian dari single source of truth ([README](README.md)). Pola compose mengikuti `docker-compose.prod.yml` (service `app`, `nginx`, `mysql`, `cloudflared`); isi image `app`/`web` mengikuti stack target Laravel + SvelteKit.
+> Bagian dari single source of truth ([README](README.md)). Satu domain melayani frontend statis + API Laravel + `/storage` (tanpa CORS lintas domain, tanpa Docker).
 
-## 6.1 Dua mesin
+## 6.1 Arsitektur
 
-| Mesin | Peran | Arch |
+| Bagian | Lokasi di hosting | Keterangan |
 |---|---|---|
-| Mac Apple Silicon (M1/M2/…) | Dev + opsional build image | `arm64` (`aarch64`) |
-| Ubuntu Server (VPS) | Produksi | `amd64` (`x86_64`) |
+| Kode Laravel | `~/backend` (di luar docroot) | Hasil `git clone`, bukan tempat upload publik |
+| Docroot domain | `~/backend/public` | Diisi juga hasil build SvelteKit (`frontend/build/*` disalin ke sini) |
+| Database | MySQL via cPanel (MySQL Database Wizard) | `DB_HOST=localhost` (socket), tanpa akses root |
+| PHP | Selector cPanel (`lsphp` 8.3+) | Ekstensi wajib: `fileinfo`, `mbstring`, `openssl`, `pdo_mysql`, `tokenizer`, `xml`, `bcmath`, `curl` |
+| TLS | AutoSSL cPanel | Wajib aktif sebelum go-live (cookie `Secure`) |
+| Cron | cPanel → Cron Jobs | Cleanup upload mingguan (lihat §6.7) |
 
-Cek arch kapan saja: `uname -m` (Mac → `arm64`, Ubuntu → `x86_64`) dan `docker inspect <image> --format='{{.Architecture}}'`.
+Alur request (Apache, lihat `.htaccess` di §6.6): file ada → serve langsung; `/api|/sanctum|/health|/up` → `index.php` (Laravel); selain itu → `index.html` (SPA fallback, client-side routing).
 
-## 6.2 Prinsip: satu compose, dua arch
-Semua base image yang dipakai bermanifest **multi-arch** (varian `arm64` + `amd64` resmi): `php:fpm`, `nginx:alpine`, `mysql:8.4`, `cloudflare/cloudflared`. Docker otomatis menarik varian sesuai mesin — jadi **jangan pasang `platform:`** di compose; pin manual justru memaksa emulasi QEMU yang lambat (terutama MySQL di Mac).
-- Dev lokal (Mac): `docker-compose.yml` — hanya service `mysql` (Laravel via `php artisan serve`, SvelteKit via `npm run dev`). Jalan native `arm64`, tanpa emulasi.
-- Produksi (Ubuntu): `docker-compose.prod.yml` — `app` (PHP-FPM Laravel) + `nginx` (file statis SvelteKit + proxy PHP + `/storage`) + `mysql` + `cloudflared` (profil `tunnel`). Jalan native `amd64`.
-- Volume (`mysql-data`, `uploads-data`) bersifat lokal per mesin dan portable lintas arch untuk versi image yang sama — tetapi tidak dishare; pindahkan data via backup SQL, bukan dengan menyalin volume.
+## 6.2 Env produksi (`~/backend/.env`)
 
-## 6.3 Jebakan utama: image custom hasil build Mac tidak jalan di server
-`docker compose build` di Mac menghasilkan image **`arm64`**; dijalankan di Ubuntu `amd64` → error `exec format error`. Ada dua alur resmi — pilih satu:
-
-**Alur A — build di server (disarankan, tanpa urusan arch).**
-```bash
-# di Ubuntu: tarik kode, siapkan env, build + jalan native amd64
-git pull
-make env   # sekali saja, lalu isi .env.docker
-make init  # build + DB + migrasi + seed (lihat §6.5)
-```
-Tidak ada flag platform apa pun — build dan run sama-sama `amd64`.
-
-**Alur B — build di Mac, deploy image ke server.**
-```bash
-# sekali saja di Mac: aktifkan builder multi-arch
-docker buildx create --name multi --use
-# build image app untuk AMD64 lalu push ke registry
-docker buildx build --platform linux/amd64 \
-  -t registry-contoh/jasa-app:latest --target app --push .
-docker buildx build --platform linux/amd64 \
-  -t registry-contoh/jasa-web:latest --target web --push .
-# di Ubuntu: ganti build: dengan image: registry-... lalu
-docker compose -f docker-compose.prod.yml --env-file .env.docker pull
-docker compose -f docker-compose.prod.yml --env-file .env.docker up -d
-```
-Varian: `--platform linux/amd64,linux/arm64` bila image yang sama juga ingin dijalankan di Mac. Jangan jalankan image `amd64` di Mac via emulasi untuk MySQL/PHP — lambat; untuk test cepat cukup andalkan varian `arm64`.
-
-## 6.4 Env produksi (`.env.docker`)
-Bentuk file sama seperti `.env.docker.example` yang ada; nilainya mengikuti stack Laravel (kanonis — lihat [00-status](00-status.md) No.14):
+Salin dari `backend/.env.example`, lalu sesuaikan (kanonis — lihat [00-status](00-status.md) No.14):
 
 | Var | Isi |
 |---|---|
-| `APP_URL` | `https://domain-anda` (root Laravel, URL absolut) |
-| `FRONTEND_URL` | `https://domain-anda` (dipakai CORS + link reset password) |
-| `SANCTUM_STATEFUL_DOMAINS` | domain frontend tanpa skema (mis. `domain-anda`) — wajib agar cookie Sanctum terkirim |
-| `SESSION_LIFETIME` | `120` (sesi admin idle-timeout 120 menit) |
-| `SESSION_SECURE_COOKIE` | `true` di production (cookie hanya via HTTPS) |
-| `DB_HOST/DB_PORT/DB_DATABASE/DB_USERNAME/DB_PASSWORD` | `mysql`, `3306`, `jasa_website`, `***`, `***` (di compose: host `mysql`; wajib diganti dari contoh) |
-| `MYSQL_ROOT_PASSWORD` | wajib diganti dari contoh |
-| `APP_KEY` | `php artisan key:generate` (pengganti `BETTER_AUTH_SECRET`) |
-| `SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD` | admin awal (`make seed`, idempotent) |
-| `MAIL_*` | `MAIL_MAILER/HOST/PORT/USERNAME/PASSWORD/FROM_ADDRESS`; kosong = notifikasi email mati, in-app tetap jalan |
-| `TUNNEL_TOKEN` | token Cloudflare Zero Trust; stack inti jalan tanpa ini, tunnel via `make tunnel-up` |
+| `APP_ENV` / `APP_DEBUG` | `production` / `false` (wajib) |
+| `APP_URL` / `FRONTEND_URL` | `https://domain-anda` (sama, satu domain) |
+| `SANCTUM_STATEFUL_DOMAINS` | `domain-anda` tanpa skema — wajib agar cookie Sanctum terkirim |
+| `APP_KEY` | `php artisan key:generate --show` (tempel manual, jangan commit) |
+| `DB_HOST/DB_PORT/DB_DATABASE/DB_USERNAME/DB_PASSWORD` | `localhost`, `3306`, `user_db` (dari wizard), `user_dbuser`, `***` |
+| `SESSION_DRIVER` / `SESSION_LIFETIME` / `SESSION_SECURE_COOKIE` | `database` / `120` / `true` |
+| `SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD` | admin awal (`db:seed`, idempotent) |
+| `MAIL_*` | SMTP akun cPanel (`MAIL_MAILER=smtp`, host `mail.domain-anda`); kosong = notifikasi email mati, in-app tetap jalan |
 
-Catatan: `.env.docker.example` di repo masih memuat var era Express (`BETTER_AUTH_*`, `DATABASE_URL`, `PUBLIC_APP_URL`) — hapus ketiganya saat penyelarasan. Penyelesaian tercatat sebagai G6 di [00-status](00-status.md) dan dikerjakan di [08](08-migrasi.md) Fase 0.
+`.env` tidak pernah di-commit dan tidak boleh bisa diakses via web (di luar docroot, aman).
 
-## 6.5 Perintah (`Makefile`, konsep tidak berubah)
-`make env|init|build|up|down|restart|ps|logs|migrate|seed|admin|backup|upgrade|shell|mysql|tunnel-up|tunnel-down|preview` — konsep sama, hanya perintah di dalamnya mengikuti Laravel:
-- `secret` era Express (generate `BETTER_AUTH_SECRET`) digantikan `php artisan key:generate` (`APP_KEY`).
-- `admin` tetap: penjelasan bahwa admin dibuat via `make seed` dari `SEED_ADMIN_*`.
-- `migrate` → `exec app php artisan migrate --force` (dulu `node dist/db/migrate.js`).
-- `seed` → `exec app php artisan db:seed --force` (idempotent via `firstOrCreate`).
-- `shell` → `exec app sh` (image PHP tetap punya `sh`).
-- Tambahan yang disarankan: target `build-amd64` berisi perintah `buildx --platform linux/amd64 --push` dari §6.3 untuk Alur B.
+## 6.3 Langkah deploy awal
 
-## 6.6 Verifikasi
-1. `make ps` — semua `healthy`/`running` (`app` punya healthcheck ke `/health`, `mysql` via `mysqladmin ping`).
-2. `docker inspect <img> --format='{{.Architecture}}'` — di Ubuntu harus `amd64`, di Mac `arm64`.
-3. Buka `https://domain-anda` → homepage render dari satu `GET /api/v1/home`; login `/admin/login` (wajib ambil CSRF cookie dulu — lihat tabel Auth di [05-api-reference.md](05-api-reference.md)) → sesi idle-timeout 120 menit.
-4. `make preview` (buka port nginx sementara) hanya untuk debug tanpa tunnel; tutup lagi setelah selesai.
+1. Buat database + user via **MySQL Database Wizard**, catat nama DB/user/password.
+2. Upload/clone repo ke `~/backend` (cPanel **Git Version Control** atau SSH: `git clone … ~/backend`).
+3. Di terminal cPanel (atau SSH), dari `~/backend`:
+   ```bash
+   cp .env.example .env   # lalu isi sesuai §6.2
+   composer install --no-dev --optimize-autoloader
+   php artisan key:generate
+   php artisan storage:link
+   php artisan migrate --force
+   php artisan db:seed --force
+   ```
+4. Build frontend **di lokal** (tanpa `VITE_API_BASE` agar relatif ke domain yang sama):
+   ```bash
+   cd frontend && npm ci && npm run build
+   ```
+   Salin isi `frontend/build/` ke `~/backend/public/` (timpa `index.html` bawaan Laravel bila ada).
+5. Pastikan `.htaccess` docroot mengikuti §6.6 (API + SPA fallback).
+6. Aktifkan **AutoSSL** untuk domain, paksa HTTPS.
+7. Buka `https://domain-anda` → homepage dari satu `GET /api/v1/home`; login `/admin/login` → sesi idle-timeout 120 menit.
 
-## 6.7 Checklist sebelum go-live
-- [ ] `.env.docker` terisi semua (sandi diganti, `APP_KEY` digenerate, `SEED_ADMIN_PASSWORD` kuat).
-- [ ] Image di server ber-arch `amd64` (bukan hasil copy dari Mac tanpa buildx).
-- [ ] Migrasi + seed sukses (`make migrate && make seed`).
-- [ ] `TUNNEL_TOKEN` valid bila pakai `tunnel-up`; kalau tidak, port nginx hanya dibuka seperlunya.
-- [ ] Backup awal jalan (`make backup` → folder `backups/`), lalu jadwalkan berkala.
+## 6.4 Update berikutnya
 
-## 6.8 Deploy via Dokploy (home server)
-1. Di Dokploy buat Application → tipe **Docker Compose** → arahkan ke repo ini, Compose File: `docker-compose.prod.yml`.
-2. Isi **Environment** di UI Dokploy dengan nilai dari `.env.docker.example` (`APP_URL`/`FRONTEND_URL` = `https://domain-anda`, `SANCTUM_STATEFUL_DOMAINS` = `domain-anda`, `APP_KEY` dari `make key`, sandi diganti). `VITE_API_BASE` biarkan kosong (frontend + API satu domain via nginx).
-3. Tambahkan **Domain** di Dokploy ke service `web` port `80`. Tanpa publish port di compose (Dokploy/Traefik yang expose).
-4. Setelah deploy pertama, di terminal Dokploy jalankan sekali: `make migrate && make seed` (atau `docker compose exec app php artisan migrate --force && docker compose exec app php artisan db:seed --force` bila tanpa Makefile).
-5. `APP_DEBUG` dipaksa `false` di compose; `.env` tidak pernah dibakar ke image (lihat `.dockerignore`).
+```bash
+cd ~/backend && git pull
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+# bila ada perubahan frontend: rebuild lokal lalu salin ulang frontend/build/* ke public/
+```
+
+## 6.5 Verifikasi
+
+1. `https://domain-anda/health` → `{"status":"ok"}`.
+2. `https://domain-anda/api/v1/home` → payload homepage (bukan halaman HTML).
+3. Route SPA langsung (`/portofolio`, `/admin/login`) render tanpa 404 Apache (fallback `index.html` jalan).
+4. Login admin → kelola 1 konten → upload 1 gambar → tampil via `/storage/...`.
+
+## 6.6 `.htaccess` docroot (API + SPA fallback)
+
+Simpan sebagai `~/backend/public/.htaccess` (ganti bawaan Laravel):
+
+```apache
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. File/dir yang ada diserve langsung (aset SvelteKit, /storage/*, index.html).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 2. API/auth/health ke Laravel.
+    RewriteCond %{REQUEST_URI} ^/(api|sanctum|health|up)(/|$)
+    RewriteRule ^ index.php [L]
+
+    # 3. Sisanya ke SPA (client-side routing).
+    RewriteRule ^ index.html [L]
+</IfModule>
+```
+
+## 6.7 Operasional (cron + backup)
+
+Cron mingguan (cPanel → Cron Jobs), ganti path sesuai akun:
+
+```cron
+0 3 * * 0 cd ~/backend && /usr/local/bin/php artisan uploads:cleanup --apply >> ~/uploads-cleanup.log 2>&1
+```
+
+Backup: database via cPanel **Backup Wizard** (jadwalkan), file upload (`~/backend/storage/app/public`) ikut dalam full backup akun. Sebelum update besar: backup manual dulu, lalu uji `migrate` di hasil restore bila memungkinkan.
+
+## 6.8 Checklist sebelum go-live
+
+- [ ] PHP 8.3+ + semua ekstensi §6.1 aktif; AutoSSL aktif + paksa HTTPS.
+- [ ] `.env` terisi semua (`APP_DEBUG=false`, `APP_KEY` digenerate, sandi diganti, `SEED_ADMIN_PASSWORD` kuat).
+- [ ] Migrasi + seed sukses; `storage:link` ada (`public/storage` mengarah ke storage).
+- [ ] `.htaccess` §6.6 terpasang; verifikasi §6.5 hijau semua.
+- [ ] Backup awal tersimpan, cron cleanup jalan.

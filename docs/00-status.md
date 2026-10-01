@@ -12,17 +12,17 @@
 1. SPA client-side routing; pola **preview + Lihat Lebih Banyak** untuk konten yang bisa tumbuh.
 2. Mockup berbayar = produk terpisah (`order_type='mockup'`); potongan ke paket penuh dihitung manual admin.
 3. Pembayaran manual transfer + verifikasi admin. Paket = tanpa bayar di muka (lanjut WhatsApp); mockup = bayar di muka (instruksi transfer).
-4. Storage gambar = disk/volume lokal Docker, bukan S3.
+4. Storage gambar = disk lokal hosting, bukan S3.
 5. Kategori portofolio = tabel `categories`, bukan enum.
 6. API publik pesanan hanya kenal `tracking_code` (`ORD-XXXXXX`), bukan `id`.
 7. Auth = Laravel Sanctum, cookie httpOnly, sesi idle-timeout 120 menit (`SESSION_LIFETIME=120`, sliding Laravel); satu akun admin, tanpa role.
 8. Backend = Laravel (PHP), frontend = SvelteKit SPA statis, DB = MySQL 8 (skema/tabel tidak berubah).
-9. Deploy = Docker Compose multi-arch (dev Mac `arm64`, prod Ubuntu `amd64`).
+9. Deploy = shared hosting cPanel, satu domain (frontend statis + API Laravel + `/storage` dalam satu docroot `backend/public`, lihat [06](06-deployment.md)).
 10. Visual = tema "Vivid Azure" rev.3 + struktur `redesign ui/` (detail di `DESIGN.md` — tetap jadi referensi visual).
 11. Sesi admin = idle-timeout 120 menit Laravel, bukan absolut fixed. Idle 2 jam → logout.
 12. `throttle:10,1` berlaku untuk 4 form publik + 3 auth (`contact`, `consultations`, `orders`, `mockup-requests`, `admin/login`, `admin/forgot-password`, `admin/reset-password`). Lebih → `429`.
 13. Paket nonaktif → `422 VALIDATION_ERROR`; `mockup_offer` belum diseed → `404`. Tidak ada `400` untuk kedua kasus ini.
-14. Env kanonis: `APP_URL`, `FRONTEND_URL`, `SANCTUM_STATEFUL_DOMAINS`, `DB_*`, `SESSION_*`, `MAIL_*`, `SEED_ADMIN_*`, `APP_KEY`, `MYSQL_ROOT_PASSWORD`, `TUNNEL_TOKEN`. `PUBLIC_APP_URL` / `DATABASE_URL` / `BETTER_AUTH_*` dihapus (legacy Express).
+14. Env kanonis: `APP_URL`, `FRONTEND_URL`, `SANCTUM_STATEFUL_DOMAINS`, `DB_*`, `SESSION_*`, `MAIL_*`, `SEED_ADMIN_*`, `APP_KEY` (lihat tabel [06](06-deployment.md) §6.2). `PUBLIC_APP_URL` / `DATABASE_URL` / `BETTER_AUTH_*` dihapus (legacy).
 15. Ganti kata sandi = `PATCH /api/v1/admin/password` (`current_password` + `password|min:8|confirmed`). Masuk kontrak beku [05](05-api-reference.md).
 16. 8 kolom gambar kanonis: `hero_content.image_url`, `portfolios.image_url`, `team_members.photo_url`, `client_logos.logo_url`, `about_timeline_items.image_url`, `mockup_offer.image_url`, `seo_settings.og_image_url`, `business_settings.footer_map_url`.
 17. Mapping notifikasi: `pesanan_baru→notify_new_order`, `permintaan_mockup→notify_mockup_request`, `pesan_kontak→notify_contact_message`, `konsultasi_baru→notify_consultation`.
@@ -40,7 +40,7 @@
 | Kontrak API (URI + payload) | [05](05-api-reference.md) | Express, sesuai | ✅ Selaras (kontrak dibekukan, implementasi diganti) |
 | Alur bisnis | [04](04-alur-bisnis.md) | Sesuai | ✅ Selaras |
 | CMS mapping | [07-cms.md](07-cms.md) | Sesuai `CMS.md` | ✅ Selaras |
-| Docker/dev | [06](06-deployment.md) | Compose + Makefile Express-era | ⚠️ Sebagian — `.env.docker.example`, `Dockerfile`, `Makefile` perlu diselaraskan Laravel (lihat [08](08-migrasi.md) Fase 0) |
+| Deploy/dev | [06](06-deployment.md) | Tanpa Docker: dev lokal `artisan serve` + `npm run dev` | ✅ Selaras (deploy cPanel, panduan di [06](06-deployment.md)) |
 
 ## Gap terbuka (jangan diisi asal — klarifikasi dulu)
 
@@ -51,7 +51,7 @@
 | G3 | Kartu paket tampilkan angka harga atau tidak (`show_price`) | `DESIGN.md §6` | ⏳ Keputusan bisnis (skema sudah siap dua-duanya) |
 | G4 | Jawaban 4 FAQ belum ditulis (desain hanya ada pertanyaan) | `DESIGN.md §6`, `CMS.md §2.10` | ⏳ TODO konten sebelum go-live |
 | G5 | `reference_price_cards` bisa basi (harga pihak ketiga) | `CMS.md §2.5` | ⚠️ Proses: admin update berkala + `note_text` wajib menyebut tanggal cek |
-| G6 | `.env.docker.example`, `Dockerfile`, `Makefile`, `AGENTS.md`, `ARCHITECTURE.md` masih era Express/SolidJS | Audit `docs/` | ✅ Selesai: `Dockerfile` multi-stage (`app`/`web`), `docker-compose.yml` (dev mysql), `docker-compose.prod.yml` (+`cloudflared` profil tunnel), `docker-compose.preview.yml`, `.env.docker.example` kanonis, `Makefile` Laravel (lihat §6.8 untuk Dokploy) |
+| G6 | Deploy diputus ke shared hosting cPanel (bukan Docker) | Keputusan [00-status](00-status.md) No.9 | ✅ Selesai: file Docker dihapus, panduan cPanel di [06](06-deployment.md) |
 | G7 | `ARCHITECTURE.md` menyebut `OrderConfirmation`/`/pesan/konfirmasi` yang tidak ada di kode | Audit `docs/` | ✅ Diputus: ikut kode (hanya `/pesan`) sampai ada spec baru |
 
 ## Testing minimum (wajib hijau sebelum klaim selesai)

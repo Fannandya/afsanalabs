@@ -13,11 +13,11 @@
 | [03-database.md](03-database.md) | Tabel, relasi, pola singleton vs list | Normatif |
 | [04-alur-bisnis.md](04-alur-bisnis.md) | Alur end-to-end semua peran | Normatif |
 | [05-api-reference.md](05-api-reference.md) | Kontrak endpoint (URI + payload, dibekukan) | Normatif — dibekukan |
-| [06-deployment.md](06-deployment.md) | Deploy Docker multi-arch (`arm64` dev, `amd64` prod) | Normatif |
+| [06-deployment.md](06-deployment.md) | Deploy shared hosting cPanel satu domain | Normatif |
 | [07-cms.md](07-cms.md) | Peta section → tabel → halaman admin → API + aturan khusus | Normatif |
 | [08-migrasi.md](08-migrasi.md) | Rencana migrasi Express→Laravel, SolidJS→Svelte per fase | Rencana kerja |
 
-Target stack: backend **Laravel**, frontend **SvelteKit SPA statis**, DB **MySQL 8**, deploy **Docker Compose multi-arch**. Desain UI mengacu Figma via `DESIGN.md` (tetap jadi referensi visual).
+Target stack: backend **Laravel**, frontend **SvelteKit SPA statis**, DB **MySQL**, deploy **shared hosting cPanel satu domain**. Desain UI mengacu Figma via `DESIGN.md` (tetap jadi referensi visual).
 
 ## Cara memakai
 1. Mulai dari [00-status.md](00-status.md) untuk konteks (keputusan, status, gap).

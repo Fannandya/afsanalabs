@@ -67,4 +67,4 @@ SectionHeader ..> ValueProp, ProcessStep, ObjectionQuestion,
 ## 3.8 Migrasi & seed (Artisan)
 - Migrasi: `php artisan make:migration` per tabel/perubahan skema; `php artisan migrate` (pengganti `db:generate`/`db:migrate` Drizzle Kit). Foreign key ditulis eksplisit (`foreignId(...)->nullable()->constrained()->nullOnDelete()`).
 - Seed (`database/seeders/`, idempoten via `firstOrCreate`): `AdminSeeder` (satu admin via `Hash::make`, dari `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`, default `admin@lima.ai`/`ChangeMe123!` — segera diganti) + `ContentSeeder` (isi default yang sama seperti dulu: business_settings "LIMA AI", hero, nav_links, legal_links, 9 section_headers, value_props×4, process_steps×4, objection×3 + price_cards×3, services×4, categories + contoh portfolios (3 `is_featured`), price_packages×3, mockup_offer, faqs×4) + baris `notification_preferences` default-ON untuk admin. Tabel transaksional dibiarkan kosong.
-- Koneksi: `DB_*` (dev lokal MySQL 8.4 via `docker-compose.yml`, service `mysql` + healthcheck `mysqladmin ping` — tidak berubah).
+- Koneksi: `DB_*` (`DB_HOST=localhost` di cPanel; dev lokal MySQL dengan kredensial sendiri).

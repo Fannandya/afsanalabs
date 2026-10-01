@@ -5,9 +5,9 @@
 ## 2.1 Wiring utama — `routes/api.php` + `bootstrap/app.php`
 - Prefix global `api/v1` (seperti dulu `/api/v1/*`). Route publik didaftar polos; route admin dibungkus `middleware('auth:sanctum')` — tidak ada lagi guard manual per-router karena middleware grup menanganinya di satu tempat (dulu `requireAuth` ditempel per router).
 - CORS: `config/cors.php` (`allowed_origins = [FRONTEND_URL]`, `supports_credentials = true`) — pengganti `cors({ origin, credentials })`.
-- Security headers: middleware Laravel default (+ `TrustProxies` karena di belakang nginx/Cloudflare, pengganti `trust proxy = 1` agar IP asli terbaca rate-limiter).
+- Security headers: middleware Laravel default (rate-limiter membaca IP langsung; bila suatu saat di belakang proxy/CDN, aktifkan `trustProxies` — saat ini nonaktif).
 - CSRF/XSRF: Sanctum stateful — frontend wajib `GET /sanctum/csrf-cookie` dulu; request state-changing menyertakan cookie `XSRF-TOKEN` (axios/fetch dengan `credentials: include` menanganinya otomatis).
-- Statis: gambar di `storage/app/public` → symlink `public/storage`, diserve nginx langsung di `/storage/*`. Folder karantina `.trash` dikecualikan dari symlink/web-root (dulu `dotfiles: ignore`).
+- Statis: gambar di `storage/app/public` → symlink `public/storage`, diserve web server langsung di `/storage/*`. Folder karantina `.trash` dikecualikan dari web-root.
 - Exception terpusat: `bootstrap/app.php` → `withExceptions()` memetakan `ValidationException` → `422 { error: { message: "Data tidak valid.", code: "VALIDATION_ERROR", fields } }` (dulu 400 via Zod — Laravel konvensional 422; frontend hanya membaca `error.message` jadi aman), `ModelNotFoundException` → 404, selain itu 500 generik + log. Tidak ada lagi `asyncHandler` — exception Laravel otomatis ditangkap handler.
 
 ## 2.2 Homepage gabungan — `Api/Public/HomeController.php@index`
@@ -84,7 +84,7 @@ Grup `auth:sanctum`. Validasi: `file|max:2048` (2MB → pesan "Ukuran file terla
 - `throttle:10,1` (= **10 request/menit per IP**, lebih → `429`) untuk 4 form publik (§2.4) + 3 endpoint auth (§2.8) (pengganti `express-rate-limit`).
 - Exception handler (`bootstrap/app.php`): validasi → 422 + `fields`; model hilang → 404; auth → 401; throttle → 429; selain itu log + 500 generik. (Perbedaan disengaja: 422 bukan 400 — frontend aman karena hanya membaca `error.message`.)
 - `App\Support\Whatsapp`: `normalize()` (`08xx` → `62xx`, buang non-digit), `fillTemplate()` (`{{kode}} {{paket}} {{nama}}`), `url()` (`https://wa.me/...`). Template default sama: `"Halo, saya {{nama}} ingin memesan paket {{paket}} dengan kode booking {{kode}}."`.
-- Koneksi DB (`config/database.php` mysql): dari `DB_HOST/PORT/DATABASE/USERNAME/PASSWORD`. Serve: `php artisan serve` (dev) / PHP-FPM + nginx (prod).
+- Koneksi DB (`config/database.php` mysql): dari `DB_HOST/PORT/DATABASE/USERNAME/PASSWORD` (`DB_HOST=localhost` di cPanel). Serve: `php artisan serve` (dev) / PHP selector cPanel 8.3+ dengan docroot `backend/public` (prod, lihat [06](06-deployment.md)).
 
 ## 2.14 Health & ganti sandi
 - `GET /health` → `HealthController@index` (route Laravel polos tanpa `auth`/`throttle`, balas `{ status: "ok" }`) untuk healthcheck kontainer `app`.

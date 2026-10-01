@@ -8,10 +8,10 @@
 - Data lama dipertahankan: nama tabel/kolom sama ([03](03-database.md)), migrasi data = dump + import + rewrite URL `/uploads/*` → `/storage/*`.
 
 ## Fase 0 — Fondasi (sebelum kode)
-- [ ] Selaraskan `.env.docker.example` ke tabel kanonis [06](06-deployment.md) §6.4 (`APP_URL`, `FRONTEND_URL`, `SANCTUM_STATEFUL_DOMAINS`, `APP_KEY`, `DB_*`, `MAIL_*`, `SESSION_*`, `SEED_ADMIN_*`; hapus `PUBLIC_APP_URL`/`DATABASE_URL`/`BETTER_AUTH_*`).
-- [ ] Tulis ulang `Dockerfile` (stage `app` = PHP-FPM Laravel, `web` = nginx + hasil build SvelteKit) dan sesuaikan target `Makefile` yang memanggil `node dist/*` → `php artisan ...`.
+- [ ] Siapkan akun cPanel sesuai [06](06-deployment.md) §6.1 (PHP 8.3+, ekstensi, MySQL, AutoSSL).
+- [ ] Siapkan `.env` dari `backend/.env.example` mengikuti tabel kanonis [06](06-deployment.md) §6.2 (tanpa var legacy `PUBLIC_APP_URL`/`DATABASE_URL`/`BETTER_AUTH_*`).
 - [ ] Bekukan fixture: simpan 1 contoh response `GET /api/v1/home` + tiap endpoint [05](05-api-reference.md) dari backend lama sebagai oracle test Fase 1.
-- Selesai bila: `docker compose build` menghasilkan image `amd64`-benar di server dan `arm64` di Mac (lihat [06](06-deployment.md) §6.3).
+- Selesai bila: PHP + MySQL + HTTPS siap di cPanel (lihat [06](06-deployment.md) §6.5).
 
 ## Fase 1 — Backend Laravel
 1. Migrasi + seeder ([03](03-database.md) §3.8) → import data produksi lama → rewrite URL gambar ke `/storage/*`.
@@ -30,6 +30,6 @@
 
 ## Fase 3 — Cutover produksi
 1. Migrasi data final + verifikasi URL gambar.
-2. `make migrate && make seed` di server → smoke test [06](06-deployment.md) §6.6 → checklist §6.7.
-3. Aktifkan tunnel, matikan stack lama, backup pertama.
+2. `php artisan migrate --force && php artisan db:seed --force` di hosting → smoke test [06](06-deployment.md) §6.5 → checklist §6.8.
+3. Arahkan domain + aktifkan AutoSSL, backup pertama.
 - Selesai bila: homepage + 1 order paket + 1 mockup + login admin + 1 upload berjalan di domain produksi, backup tersimpan.
