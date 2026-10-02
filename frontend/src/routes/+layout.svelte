@@ -1,10 +1,12 @@
 <script lang="ts">
 	import '../app.css';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { loadHome, home, str } from '$lib/home';
 	import Toasts from '$lib/components/ui/Toasts.svelte';
 
 	let { children } = $props();
+	const isAdmin = $derived(page.url.pathname.startsWith('/admin'));
 
 	$effect(() => {
 		loadHome().catch(() => {});
@@ -22,7 +24,7 @@
 	{/if}
 </svelte:head>
 
-<header class="topnav">
+<header class="topnav" class:landing-nav={!isAdmin}>
 	<div class="wrap">
 		<a class="brand" href="/" onclick={(e) => { e.preventDefault(); nav('/'); }}>
 			{str($home?.businessSettings?.['business_name']) || 'LIMA AI'}
@@ -37,7 +39,7 @@
 
 <main>{@render children()}</main>
 
-<footer class="footer">
+<footer class="footer" class:landing-footer={!isAdmin}>
 	<div class="wrap">
 		<strong>{str($home?.businessSettings?.['business_name']) || 'LIMA AI'}</strong>
 		<p class="muted small">{str($home?.businessSettings?.['footer_tagline'])}</p>
